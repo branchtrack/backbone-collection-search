@@ -39,14 +39,14 @@
         return _.extend({ cid: model.cid }, model.attributes);
       }));
 
-      var results = this.fuse.search(query);
+      var results = this.fuse.search(keyword);
 
       results = _.map(results, function (cid) { return this.get(cid); }, this);
 
       // Instantiate new Collection
       var collection = new Backbone.Collection( results );
       collection.searching = {
-        query: query,
+        keyword: keyword,
         attributes: _.result(this, 'searchable', [])
       };
       collection.getSearchQuery = function() {
