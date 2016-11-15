@@ -6,24 +6,25 @@
 ;(function (root, factory) {
 
   if (typeof define === 'function' && define.amd) {
-    define(['underscore', 'backbone'], factory);
+    define(['underscore', 'backbone', 'fuse.js'], factory);
   } else if (typeof exports === 'object') {
-    module.exports = factory(require('underscore'), require('backbone'));
+    module.exports = factory(require('underscore'), require('backbone'), 'fuse.js');
   } else {
-    factory(root._, root.Backbone);
+    factory(root._, root.Backbone, root.Fuse);
   }
 
-}(this, function (_, Backbone) {
+}(this, function (_, Backbone, Fuse) {
 
   // Extending out
-  _.extend(Backbone.Collection.prototype, {  
+  _.extend(Backbone.Collection.prototype, {
 
-    //@ Default Matcher - may be overwritten
-    matcher: function(needle, haystack) {
-      if (!needle || !haystack) return;
-      needle = needle.toString().toLowerCase();
-      haystack = haystack.toString().toLowerCase();
-      return haystack.indexOf( needle ) >= 0;
+    buildFuse: function () {
+      this.fuse = new Fuse([], {
+        keys: _.result(this, 'searchable', []),
+        id: 'cid',
+        threshold: 0.4,
+        distance: 20
+      });
     },
 
     //@ Search function
@@ -31,26 +32,24 @@
 
       // If collection empty get out
       if (!this.models.length) return;
+      if (!this.fuse) this.buildFuse();
 
-      // Filter
-      var matcher = this.matcher;
-      var results = this.filter(function( model ){  
-        attributes = attributes && attributes.length ? attributes : _.keys( model.attributes );
-        return !_.every( attributes, function( attribute ){
-          return !matcher( keyword, model.get( attribute ) );
-        });
-      });
+      // set collection for Fuse
+      this.fuse.set(this.map(function (model) {
+        return _.extend({ cid: model.cid }, model.attributes);
+      }));
 
-      // If keyword is blank, return all
-      results = !results || !results.length ? this.models : results;
+      var results = this.fuse.search(query);
+
+      results = _.map(results, function (cid) { return this.get(cid); }, this);
 
       // Instantiate new Collection
       var collection = new Backbone.Collection( results );
-      collection.searching = { 
-        keyword: keyword,
-        attributes: attributes
+      collection.searching = {
+        query: query,
+        attributes: _.result(this, 'searchable', [])
       };
-      collection.getSearchQuery = function() { 
+      collection.getSearchQuery = function() {
         return this.searching;
       };
 
@@ -72,7 +71,7 @@
     getSearchQuery: function() {
       return this.getSearchResults() && this.getSearchResults().getSearchQuery();
     },
-    
+
     //@ Get recent search results
     getSearchResults: function() {
       return this._searchResults;
