@@ -8,7 +8,7 @@
   if (typeof define === 'function' && define.amd) {
     define(['underscore', 'backbone', 'fuse.js'], factory);
   } else if (typeof exports === 'object') {
-    module.exports = factory(require('underscore'), require('backbone'), 'fuse.js');
+    module.exports = factory(require('underscore'), require('backbone'), require('fuse.js'));
   } else {
     factory(root._, root.Backbone, root.Fuse);
   }
@@ -23,7 +23,8 @@
         keys: _.result(this, 'searchable', []),
         id: 'cid',
         threshold: 0.4,
-        distance: 20
+        distance: 20,
+        tokenize: true
       });
     },
 
